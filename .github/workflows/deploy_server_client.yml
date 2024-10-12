@@ -10,18 +10,19 @@ jobs:
   run_ssh_commands_server:
     runs-on: self-hosted
     steps:
-      - name: Update repo on home server and build
+      - name: Update repo on home server and build server
         run: |
+            sudo service undergroundduel stop
             cd ~/underground_duel/underground_duel_server
             git fetch --all
             git reset --hard origin/main
             go build .
-            sudo service undergroundduel restart
+            sudo service undergroundduel start
   run_ssh_commands_client:
     needs: run_ssh_commands_server
     runs-on: self-hosted
     steps:
-      - name: Update repo on home server and build
+      - name: Build client
         run: |
             cd ~/underground_duel/underground_duel_client
             npm run build
