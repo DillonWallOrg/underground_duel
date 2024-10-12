@@ -21,7 +21,7 @@ export class Player extends Character {
 		super.update(deltaTime)
 
         // only send data if moving or we just stopped moving
-        if (this.movement_c.velocity != 0 || !Vector2D.areEqual(this.movement_c.direction, this.movement_c.prevDirection)) {
+        if (this.movement_c.velocity != 0 || !Vector2D.areEqual(this.movement_c.moveDirection, this.movement_c.prevMoveDirection)) {
             const moveData = {
                 MsgType: "move",
                 TickId: this.lastTickId,
@@ -31,11 +31,28 @@ export class Player extends Character {
                     Y: this.pixelPerfectArea_c.loc.Y,
                 },
                 Dir: {
-                    X: this.movement_c.direction.X,
-                    Y: this.movement_c.direction.Y,
+                    X: this.movement_c.moveDirection.X,
+                    Y: this.movement_c.moveDirection.Y,
+                },
+                PrevDir: {
+                    X: this.movement_c.prevMoveDirection.X,
+                    Y: this.movement_c.prevMoveDirection.Y,
                 }
             }
             this._webSocket.send(JSON.stringify(moveData))
+        }
+
+        if (this.justAttacked) {
+            const attackData = {
+                MsgType: "attack",
+                TickId: this.lastTickId,
+                Dir: {
+                    X: this.attackDir.X,
+                    Y: this.attackDir.Y,
+                }
+            }
+            this._webSocket.send(JSON.stringify(attackData))
+            this.justAttacked = false
         }
 
 		Camera.update()

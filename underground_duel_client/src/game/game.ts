@@ -13,9 +13,11 @@ import { parseTilemapFile } from "../utils/parsers/tilemap_parser.ts"
 import { parseSpriteFile } from "../utils/parsers/sprite_parser.ts"
 import { Settings } from "../settings/settings.ts"
 import { OtherPlayer } from "./characters/otherplayer.ts"
+import { TickTimingHistory } from "./tick_timing_history.ts"
 
 export class Game extends Entity {
     private _lastTimestamp = 0
+    private _tickTimingHistory: TickTimingHistory = new TickTimingHistory(Settings.network.tickHistoryLength)
     private _otherPlayers: Map<string, OtherPlayer> = new Map<string, OtherPlayer>()
     private _entities: Entity[] = []
     private _webSocket: WebSocket | null = null
@@ -72,13 +74,14 @@ export class Game extends Entity {
             } else {
                 // we can assume dataObj is a TickInfo object
                 this._player!.lastTickId = dataObj.TickId
+                this._tickTimingHistory.addTickTime(dataObj.TickId)
                 const playerDatas = new Map(Object.entries(dataObj.PlayerDatas))
                 for (const [playerId, playerData] of playerDatas) {
                     if (playerId == this._playerId.toString()) {
                         continue
                     }
                     if (!this._otherPlayers.has(playerId)) {
-                        const newPlayer = new OtherPlayer(new SpriteSheet(otherPlayerSpriteSheetModel), playerData)
+                        const newPlayer = new OtherPlayer(new SpriteSheet(otherPlayerSpriteSheetModel), playerData, this._tickTimingHistory)
                         this._otherPlayers.set(playerId, newPlayer)
                     } else {
                         this._otherPlayers.get(playerId)!.updateData(playerData)

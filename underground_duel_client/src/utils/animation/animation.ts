@@ -54,8 +54,9 @@ export class Animation extends Entity {
     }
 
     public setElapsedTime(elapsedTime: number): void {
-        if (elapsedTime < 0 || elapsedTime >= this._lengthFrames) {
-            throw new Error("Tried to set an invalid frame index.")
+        console.log(this._lengthTime)
+        if (elapsedTime < 0 || elapsedTime >= this._lengthTime) {
+            throw new Error("Tried to set an invalid elapsed time.")
         }
 
         this._elapsedTime = elapsedTime

@@ -25,6 +25,7 @@ var upgrader = websocket.Upgrader{
 }
 var lastPlayerId uint16 = 0
 var players = map[uint16]*Player{}
+// Todo: make players array thread safe
 var currTickId uint16 = 0
 var avgTickDuration time.Duration = time.Duration(0)
 const TPS = 30
@@ -96,7 +97,7 @@ func tick() {
 }
 
 func incrementTick() uint16 {
-    currTickId++
+    currTickId++ // go doesn't throw an error when overflowing, just wraps to 0
     return currTickId
 }
 
@@ -106,7 +107,8 @@ type TickInfo struct {
 }
 
 type PlayerData struct {
-    MoveData
+    MoveData MoveData
+    AttackData AttackData
 }
 
 type Player struct {
@@ -119,6 +121,13 @@ type MoveData struct {
     Velocity uint16
     Loc utils.Vec2D[int32]
     Dir utils.Vec2D[int32]
+    PrevDir utils.Vec2D[int32]
+}
+
+type AttackData struct {
+    Initialized bool
+    TickId uint16
+    Dir utils.Vec2D[int32]
 }
 
 type SocketMessage struct {
@@ -128,7 +137,7 @@ type SocketMessage struct {
 func asPlayerData(players *map[uint16]*Player) *map[uint16]PlayerData {
 	playerDatas := map[uint16]PlayerData{}
 	for playerId, player := range *players {
-		playerDatas[playerId] = PlayerData{player.MoveData}
+		playerDatas[playerId] = PlayerData{player.MoveData, player.AttackData}
 	}
 	return &playerDatas
 }
@@ -144,11 +153,7 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	// Create player and assign player id
 	player := new(Player)
 	player.ws = ws
-	if lastPlayerId > math.MaxUint16 {
-		lastPlayerId = 0
-	} else {
-		lastPlayerId++
-	}
+    lastPlayerId++ // assuming we wont have connections retain forever so overflow is okay
 	players[lastPlayerId] = player
 	defer delete(players, lastPlayerId)
 
@@ -193,7 +198,17 @@ func handleMessage(msg []byte, conn *websocket.Conn, playerId uint16) {
 		}
 
         moveData.addMovementPrediction()
-		players[playerId].MoveData = moveData
+        players[playerId].MoveData = moveData // Todo: check if playerId exists first
+    case "attack":
+        var attackData AttackData
+        err := json.Unmarshal(msg, &attackData)
+        if err != nil {
+			log.Println(err)
+            return
+        }
+
+        attackData.Initialized = true
+		players[playerId].AttackData = attackData
     default:
 		// Log and parrot the message we just read in
 		log.Println(msgType)

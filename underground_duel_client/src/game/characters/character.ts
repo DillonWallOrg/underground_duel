@@ -20,6 +20,8 @@ enum CharacterAnimationList {
 }
 
 export class Character extends Entity {
+    public justAttacked: boolean = false
+    public attackDir: Vector2D = Vector2D.zero()
 	public movement_c: MovementComponent
 	public pixelPerfectArea_c: AreaComponent
     public sprite_c: SpriteComponent
@@ -55,7 +57,7 @@ export class Character extends Entity {
             return
         }
 
-		let dir = this.movement_c.direction
+		let dir = this.movement_c.moveDirection
 		if (Vector2D.isZero(dir)) {
             dir = prevDirection
 		}
@@ -95,9 +97,9 @@ export class Character extends Entity {
             return
         }
 
-		let dir = this.movement_c.direction
+		let dir = this.movement_c.moveDirection
 		if (Vector2D.isZero(dir)) {
-            dir = this.movement_c.prevDirection
+            dir = this.movement_c.prevMoveDirection
 		}
         if (dir.Y == 1 || (dir.X == 0 && dir.Y == 0)) {
             this.sprite_c.setAnimation(CharacterAnimationList.AttackDown)
@@ -112,6 +114,29 @@ export class Character extends Entity {
             this.sprite_c.setAnimation(CharacterAnimationList.AttackRight)
             this.draw_c.flip = true
         }
+
+        this.justAttacked = true
+        this.attackDir = { ...dir } // shallow copy so values dont change between now and websocket sending
+    }
+
+    public startAttackFromTime(time: number, dir: Vector2D) {
+        if (dir.Y == 1 || (dir.X == 0 && dir.Y == 0)) {
+            this.sprite_c.setAnimation(CharacterAnimationList.AttackDown)
+            this.draw_c.flip = false
+        } else if (dir.Y == -1) {
+            this.sprite_c.setAnimation(CharacterAnimationList.AttackUp)
+            this.draw_c.flip = false
+        } else if (dir.X == 1) {
+            this.sprite_c.setAnimation(CharacterAnimationList.AttackRight)
+            this.draw_c.flip = false
+        } else if (dir.X == -1) {
+            this.sprite_c.setAnimation(CharacterAnimationList.AttackRight)
+            this.draw_c.flip = true
+        }
+
+        const elapsedTimeSec = (Date.now() - time) / 1000
+        console.log(elapsedTimeSec)
+        this.sprite_c.currentAnimation!.setElapsedTime(elapsedTimeSec)
     }
 
     private isAttacking(): boolean {
@@ -137,7 +162,7 @@ export class Character extends Entity {
             || key === CharacterAnimationList.AttackRight
         const animationIsPlaying = this.sprite_c.currentAnimation!.isPlaying()
         if (animationIsAttack && !animationIsPlaying) {
-            this.setAnimationBasedOnDirection(this.movement_c.prevDirection)
+            this.setAnimationBasedOnDirection(this.movement_c.prevMoveDirection)
         }
     }
 }
